@@ -1,25 +1,25 @@
 use std::error::Error;
-use lambda::term::Term;
+use lambda::term::{Term, evaluate::{Evaluator, Strategy} };
 use lambda::parser;
 
-fn main() -> Result<(),Box<dyn Error>> {
-    let term = Term::App(
-        Box::new(Term::Abs(
-            'x',
-            Box::new(Term::App(
-                Box::new(Term::Var(2)),
-                Box::new(Term::Var(0)),
-            )),
-        )),
-        Box::new(Term::Var(3)),
-    );
 
-    let (_,mut expr) = parser::term(r"(\x.\y.x) t f")?; 
+
+fn main() -> Result<(),Box<dyn Error>> {
+    // let term = Term::App(
+    //     Box::new(Term::Abs(
+    //         'x',
+    //         Box::new(Term::App(
+    //             Box::new(Term::Var(2)),
+    //             Box::new(Term::Var(0)),
+    //         )),
+    //     )),
+    //     Box::new(Term::Var(3)),
+    // );
     
-    println!("{}", expr);
-    expr.to_de_bruijn();
-    let mut expr = expr.normal_order();
-    expr.to_chars();
-    println!("{}", expr);
+    let file = std::fs::read_to_string("test.lamb")?;
+    let mut eval = Evaluator::new();
+
+    eval.eval_file(&file).unwrap();
+    println!("{}", eval.reduce("main", Strategy::NormalOrder).unwrap());
     Ok(())
 }

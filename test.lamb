@@ -1,0 +1,35 @@
+let true = \x.\y.x
+let false = \x.\y.y
+
+let and = \p.\q.p q p
+let or = \p.\q.p p q
+let not = \b.b false true
+
+let if = \p.\a.\b.p a b
+
+let zcomb = \g.(\x.g (\v.x x v)) (\x.g (\v.x x v))
+let ycomb = \f.(\x.f (x x)) (\x.f (x x))
+
+let add = \m.\n.\f.\x.m f (n f x)
+let mult = \m.\n.\f.m (n f)
+let iszero = \n.n (\x.false) true
+let pred = \n.\f.\x.n (\g.\h.h (g f)) (\u.x) (\u.u)
+
+let zero = \f.\x.x
+let one = \f.\x.f x
+let id = \n.n
+let fact = \f.\n.(iszero n) one (mult n (f (pred n)))
+let factorial = ycomb fact
+let fib = \f.\n.(iszero n) zero
+                (iszero (pred n) one
+                (add (f (pred n)) (f (pred (pred n)))))
+let fibonacci = ycomb fib
+let omega = (\x.x x) (\x.x x)
+
+let two = \f.\x.f (f x)
+let three = \f.\x.f (f (f x))
+let four = \f.\x.f (f (f (f x)))
+let five = \f.\x.f (f (f (f (f x))))
+ 
+
+let main =  mult  five   four

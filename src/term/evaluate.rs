@@ -1,27 +1,46 @@
 use std::collections::HashMap;
-use crate::error::EvalError;
+use crate::error::LambError;
 use crate::{
     term::Term,
     parser,
 };
 
-pub struct Evaluator<'a> {
-    pub env: HashMap< &'a str, Term>
+
+
+#[derive(Copy,Clone,Debug)]
+pub enum Strategy {
+    NormalOrder,
+    ApplicativeOrder,
+    CallByName,
+    CallByValue,
+}
+
+pub struct Evaluator {
+    pub env: HashMap<String, Term>
 }
 
 
-impl<'a> Evaluator<'a> {
-    pub fn new() -> Evaluator<'a> {
+impl Evaluator {
+    pub fn new() -> Evaluator {
         Evaluator { env: HashMap::new() }
     }
 
-    pub fn add(&mut self, name: &'a str, term: Term) {
-        self.env.insert(name, term); 
+    pub fn add(&mut self, name: & str, term: Term) {
+        self.env.insert(name.to_owned(), term); 
     }
     
-    pub fn eval<E>(expr: &'a str) -> Result<Term, EvalError<'a>> {
-        let (_,mut t) = parser::term(expr)?;
-        t.to_de_bruijn();
-        Ok(t.normal_order())
+    pub fn eval_file<'a>(&mut self,file: &'a str) -> Result<(), LambError<'a>> {
+        let (_, v) = parser::file(file)?;
+        for (name,expr) in v {
+            let term = expr.to_term(&self.env)?;
+            self.env.insert(name, term);
+
+        }
+        Ok(())
+    }
+    pub fn reduce(&self, name: &str, strategy: Strategy) -> Option<Term> {
+        let t = self.env.get(name)?.clone();
+        let dbt = t.to_de_bruijn().many_steps(strategy);
+        Some(dbt.to_term())
     }
 }

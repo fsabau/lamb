@@ -1,25 +1,34 @@
-use std::error::Error;
 use std::convert::From;
+use nom::error::ParseError;
 
-#[derive(Debug)]
-pub enum EvalError<'a>{
+#[derive(Debug,Clone)]
+pub enum LambError<'a>{
     Parse(nom::Err<(&'a str, nom::error::ErrorKind)>),
-    NotDefined(&'a str),
+    NotDefined(String),
 }
 
-impl<'a> From<nom::Err<(&'a str, nom::error::ErrorKind)>> for EvalError<'a> {
-   fn from(error: nom::Err<(&'a str, nom::error::ErrorKind)>) -> EvalError<'a>{
-       EvalError::Parse(error)
+impl<'a> From<nom::Err<(&'a str, nom::error::ErrorKind)>> for LambError<'a> {
+   fn from(error: nom::Err<(&'a str, nom::error::ErrorKind)>) -> LambError<'a>{
+       LambError::Parse(error)
    }
 }
 
-impl<'a> std::fmt::Display for EvalError<'a> {
+impl<'a> std::fmt::Display for LambError<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            EvalError::Parse(e) => write!(f, "{}", e),
-            EvalError::NotDefined(n) => write!(f, "{} not defined", n),
+            LambError::Parse(e) => write!(f, "{}", e),
+            LambError::NotDefined(n) => write!(f, "{} not defined", n),
         }
     }
 }
 
-impl<'a> Error for EvalError<'a> { }
+impl<'a> std::error::Error for LambError<'a> { }
+
+impl<'a> ParseError<&'a str> for LambError<'a> {
+    fn from_error_kind(input: &'a str, kind: nom::error::ErrorKind) -> Self {
+        LambError::Parse(nom::Err::Error((input, kind)))
+    }
+    fn append(_:&'a str, _: nom::error::ErrorKind, other: Self) -> Self {
+        other
+    }
+}

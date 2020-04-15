@@ -1,4 +1,4 @@
-use crate::term::Term;
+use crate::expr::Expr;
 use nom::{
     bytes::complete::tag, 
     error::ParseError,
@@ -7,7 +7,6 @@ use nom::{
     IResult,
     sequence::{
         preceded,
-        separated_pair,
         delimited
     },
     character::complete::{
@@ -17,6 +16,8 @@ use nom::{
         multispace1,
     }, 
     combinator::{
+        not,
+        peek,
         map,
         verify,
     },
@@ -44,67 +45,71 @@ where I: InputTakeAtPosition,
     preceded(multispace0,f)
 }
 
-fn var(i: &str) -> IResult<&str, Term> {
-    map(space(lowercase), |c| Term::Var(c as u32 - 'a' as u32))(i)
+fn var(i: &str) -> IResult<&str, Expr> {
+    let (i, _) = not(peek(tag("let")))(i)?;
+    map(space(lowercase), |c| Expr::Var(c))(i)
 }
 
-fn abs(i: &str) -> IResult<&str, Term> {
+fn abs(i: &str) -> IResult<&str, Expr> {
     let (i,_) = char('\\')(i)?;
     let (i, c) = verify(space(anychar), |c| c.is_lowercase())(i)?;
     let (i,_) = char('.')(i)?;
-    map(space(term), move |t| Term::Abs(c,Box::new(t)))(i)
+    map(space(expr), move |t| Expr::Abs(c,Box::new(t)))(i)
 } 
 
-fn apps_vec(i: &str) -> IResult<&str, Vec<Term>> {
-    verify(separated_list(multispace1, term_no_app), |v: &Vec<Term>| v.len()>=2)(i)
+fn apps_vec(i: &str) -> IResult<&str, Vec<Expr>> {
+    verify(separated_list(multispace1, expr_no_app), |v: &Vec<Expr>| v.len()>=2)(i)
 }
 
-fn app(i: &str) -> IResult<&str,Term> {
+fn app(i: &str) -> IResult<&str,Expr> {
     map(apps_vec, 
-        |v: Vec<Term>| v.iter()
+        |v: Vec<Expr>| v.iter()
                   .skip(1)
-                  .fold(v[0].clone(), |t, x| Term::App(Box::new(t), Box::new( x.clone() )))
+                  .fold(v[0].clone(), |t, x| Expr::App(Box::new(t), Box::new( x.clone() )))
     )(i)
 }
 
 fn identifier(i: &str) -> IResult<&str,String> {
+    let (i, _) = not(peek(tag("let")))(i)?;
     map(many_m_n(2,10000, lowercase), |v| v.iter().collect::<String>())(i)
 }
 
-fn let_expr(i: &str) -> IResult<&str,(String,Term)> {
-    let (i,_) = tag("let")(i)?;
+fn let_expr(i: &str) -> IResult<&str,(String,Expr)> {
+    let (i,_) = space(tag("let"))(i)?;
     let (i, ident) = delimited(multispace1, identifier, space(char('=')))(i)?;
-    map(term, move |t| (ident.clone(),t))(i) 
+    map(expr, move |t| (ident.clone(),t))(i) 
 } 
 
-fn file(i: &str) -> IResult<&str,Vec<(String,Term)>> {
+pub fn file(i: &str) -> IResult<&str,Vec<(String,Expr)>> {
     many0(let_expr)(i) 
 }
 
-fn term_no_app(i: &str) -> IResult<&str,Term> {
+fn expr_no_app(i: &str) -> IResult<&str,Expr> {
     space(
         alt((
             delimited(
                 char('('),
-                term,
+                expr,
                 space(char(')'))
                 ),
             abs, 
+            map(identifier, |s| Expr::Ident(s)),
             var
         ))
     )(i)
 }
 
-pub fn term(i: &str) -> IResult<&str,Term> {
+pub fn expr(i: &str) -> IResult<&str,Expr> {
     space(
         alt((
             app,
             delimited(
                 char('('),
-                term,
+                expr,
                 char(')')
                 ),
             abs,
+            map(identifier, |s| Expr::Ident(s)),
             var
         ))
     )(i)
