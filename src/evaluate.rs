@@ -34,13 +34,12 @@ impl Evaluator {
         for (name,expr) in v {
             let term = expr.to_term(&self.env)?;
             self.env.insert(name, term);
-
         }
         Ok(())
     }
     pub fn reduce(&self, name: &str, strategy: Strategy) -> Option<Term> {
         let t = self.env.get(name)?.clone();
-        let dbt = t.to_de_bruijn().many_steps(strategy);
+        let dbt = t.to_de_bruijn().reduce(strategy);
         Some(dbt.to_term())
     }
 }

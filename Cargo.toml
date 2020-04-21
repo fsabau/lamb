@@ -1,5 +1,5 @@
 [package]
-name = "lambda"
+name = "lamb"
 version = "0.1.0"
 authors = ["nacho <sabauflorin28@gmail.com>"]
 edition = "2018"
@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 nom = "5.1.1"
+clap = {version = "2.33", features = ["yaml"]}

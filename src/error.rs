@@ -1,10 +1,16 @@
 use std::convert::From;
 use nom::error::ParseError;
 
-#[derive(Debug,Clone)]
+#[derive(Debug)]
 pub enum LambError<'a>{
     Parse(nom::Err<(&'a str, nom::error::ErrorKind)>),
+    IO(std::io::Error),
     NotDefined(String),
+}
+impl<'a> From<std::io::Error> for LambError<'a> {
+    fn from(error: std::io::Error) -> LambError<'a> {
+        LambError::IO(error)
+    }
 }
 
 impl<'a> From<nom::Err<(&'a str, nom::error::ErrorKind)>> for LambError<'a> {
@@ -18,6 +24,7 @@ impl<'a> std::fmt::Display for LambError<'a> {
         match self {
             LambError::Parse(e) => write!(f, "{}", e),
             LambError::NotDefined(n) => write!(f, "{} not defined", n),
+            LambError::IO(e) => write!(f,"{}",e)
         }
     }
 }

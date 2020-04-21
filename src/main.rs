@@ -1,25 +1,24 @@
 use std::error::Error;
-use lambda::term::{Term, evaluate::{Evaluator, Strategy} };
-use lambda::parser;
+use lamb::error::LambError;
+use lamb::evaluate::{Evaluator, Strategy};
+use lamb::term::Term;
+use clap::App;
 
-
+fn handle_opts<'a,'b>(matches: clap::ArgMatches<'a>) -> Result<Term,LambError<'b>> {
+    let mut evaluator = Evaluator::new();
+    let filename = matches.value_of("INPUT").unwrap();
+    let file = std::fs::read_to_string(filename)?;
+    evaluator.eval_file(&file).unwrap();
+    match evaluator.reduce("main", Strategy::NormalOrder) {
+        Some(t) => Ok(t),
+        None => Err(LambError::NotDefined("main".to_owned())),
+    }
+}
 
 fn main() -> Result<(),Box<dyn Error>> {
-    // let term = Term::App(
-    //     Box::new(Term::Abs(
-    //         'x',
-    //         Box::new(Term::App(
-    //             Box::new(Term::Var(2)),
-    //             Box::new(Term::Var(0)),
-    //         )),
-    //     )),
-    //     Box::new(Term::Var(3)),
-    // );
     
-    let file = std::fs::read_to_string("test.lamb")?;
-    let mut eval = Evaluator::new();
-
-    eval.eval_file(&file).unwrap();
-    println!("{}", eval.reduce("main", Strategy::NormalOrder).unwrap());
+    let yaml= clap::load_yaml!("../cli.yaml");
+    let matches = App::from_yaml(yaml).get_matches();
+    println!("{}",handle_opts(matches)?);
     Ok(())
 }

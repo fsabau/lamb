@@ -1,0 +1,13 @@
+name: lamb
+version: "0.1"
+author: Sabau Florin-Vlad <sabauflorin28@gmail.com>
+about: Lambda Calculus evaluator
+args:
+    - INPUT:
+        help: Sets the input file to use
+        required: true
+        index: 1
+    - verboxe:
+        short: v
+        long: verbose
+        help: Sets the level of verbosity

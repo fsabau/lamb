@@ -1,9 +1,6 @@
-pub mod debruijn;
-pub mod evaluate;
-
 use std::fmt;
 use std::collections::HashMap;
-use debruijn::DBTerm;
+use crate::debruijn::DBTerm;
 
 #[derive(Debug,Clone)]
 pub enum Term {

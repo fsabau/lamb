@@ -1,7 +1,7 @@
 
-use super::evaluate::Strategy;
+use crate::evaluate::Strategy;
 use std::fmt;
-use super::Term;
+use crate::term::Term;
 
 #[derive(Debug,Clone)]
 pub enum DBTerm {
@@ -30,41 +30,13 @@ fn to_char(i: u32) -> char {
 
 impl DBTerm {
 
-    pub fn reduce(self, strategy: Strategy) -> DBTerm {
-        self._reduce(false, strategy)
-    }
 
-    fn _reduce(self, reduced:bool, strategy: Strategy) -> DBTerm {
-        match self {
-            DBTerm::Var(x) => DBTerm::Var(x),
-
-            DBTerm::Abs(x,t1) => match strategy {
-                Strategy::NormalOrder | Strategy::ApplicativeOrder => DBTerm::Abs(x, Box::new(t1._reduce(false,strategy))),
-                Strategy::CallByValue | Strategy::CallByName       => DBTerm::Abs(x,t1),
-            }
-
-            DBTerm::App(t1,t2) => match *t1 {
-                DBTerm::Abs(_,_) => match strategy {
-                    Strategy::NormalOrder      | Strategy::CallByName  => DBTerm::App(t1,t2).beta()._reduce(false, strategy),
-                    Strategy::ApplicativeOrder | Strategy::CallByValue => DBTerm::App(Box::new(t1._reduce(false, strategy)),
-                                                                                    Box::new(t2._reduce(false,strategy)))
-                                                                          .beta()._reduce(false,strategy),
-                }
-                t1 => match reduced {
-                    true  => DBTerm::App(Box::new(t1),t2),
-                    false => DBTerm::App(Box::new(t1._reduce(false,strategy)),
-                                       Box::new(t2._reduce(false,strategy)))._reduce(true,strategy),
-                }
-            }
-        }
-    }
-
-    fn _one_step(self, strategy: Strategy) -> (DBTerm, bool) {
+    fn one_step(self, strategy: Strategy) -> (DBTerm, bool) {
         match self {
             DBTerm::Var(x) => (DBTerm::Var(x), false),
             DBTerm::Abs(x,t1) => match strategy {
                 Strategy::NormalOrder | Strategy::ApplicativeOrder => {
-                    let (t, b) = t1._one_step(strategy);
+                    let (t, b) = t1.one_step(strategy);
                     (DBTerm::Abs(x, Box::new(t)), b)
                 }
                 Strategy::CallByValue | Strategy::CallByName       => (DBTerm::Abs(x,t1),false),
@@ -75,16 +47,16 @@ impl DBTerm {
                         return (DBTerm::App(t1,t2).beta(),true)
                     }
 
-                    let (t1,b) = t1._one_step(strategy);
+                    let (t1,b) = t1.one_step(strategy);
                     if b { return (DBTerm::App(Box::new(t1), t2),true) }
-                    let (t2,b) = t2._one_step(strategy);
+                    let (t2,b) = t2.one_step(strategy);
                     if b { return (DBTerm::App(Box::new(t1), Box::new(t2)),true) }
                     (DBTerm::App(Box::new(t1),Box::new(t2)), false)
                 }
                 Strategy::ApplicativeOrder | Strategy::CallByValue => {
-                    let (t1,b) = t1._one_step(strategy);
+                    let (t1,b) = t1.one_step(strategy);
                     if b { return (DBTerm::App(Box::new(t1), t2), true) }
-                    let (t2,b) = t2._one_step(strategy);
+                    let (t2,b) = t2.one_step(strategy);
                     if b { return (DBTerm::App(Box::new(t1), Box::new(t2)), true) }
 
                     if let DBTerm::Abs(_,_) = t1 {
@@ -96,10 +68,10 @@ impl DBTerm {
         }
     }
                 
-    pub fn many_steps(self, strategy: Strategy) -> DBTerm {
-        let (t,b) = self._one_step(strategy);
+    pub fn reduce(self, strategy: Strategy) -> DBTerm {
+        let (t,b) = self.one_step(strategy);
         match b {
-            true => t.many_steps(strategy),
+            true => t.reduce(strategy),
             false => t
         }
     }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::term::Term;
 use crate::error::LambError;
+
 #[derive(Debug,Clone)]
 pub enum Expr {
     Var(char),
