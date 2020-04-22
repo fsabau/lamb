@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::collections::HashMap;
 use crate::term::Term;
 use crate::error::LambError;
@@ -9,6 +10,14 @@ pub enum Expr {
     Abs(char, Box<Expr>),
     App(Box<Expr>,Box<Expr>),
 }
+
+#[derive(Debug,Clone)]
+pub enum Statement {
+    Import(PathBuf),
+    Let(String, Expr),
+    Expr(Expr)
+}
+
 
 impl Expr {
     pub fn to_term<'a,'b>(self, env: &'a HashMap<String, Term>) -> Result<Term,LambError<'b>>  {

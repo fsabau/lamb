@@ -1,6 +1,8 @@
-pub mod expr;
+pub mod ast;
 
-use expr::Expr;
+use ast::{Expr, Statement};
+use std::iter::FromIterator;
+use std::path::PathBuf;
 use nom::{
     bytes::complete::tag, 
     error::ParseError,
@@ -9,7 +11,8 @@ use nom::{
     IResult,
     sequence::{
         preceded,
-        delimited
+        delimited,
+        terminated,
     },
     character::complete::{
         anychar,
@@ -18,6 +21,7 @@ use nom::{
         multispace1,
     }, 
     combinator::{
+        all_consuming,
         not,
         peek,
         map,
@@ -35,9 +39,9 @@ fn lowercase(i: &str) -> IResult<&str, char> {
     verify(anychar, |c| c.is_lowercase())(i)
 }
 
-fn uppercase(i: &str) -> IResult<&str, char> {
-    verify(anychar, |c| c.is_uppercase())(i)
-}
+// fn uppercase(i: &str) -> IResult<&str, char> {
+//     verify(anychar, |c| c.is_uppercase())(i)
+// }
 
 
 fn space<I,O,E>(f: impl Fn(I)->IResult<I,O,E>) -> impl Fn(I) -> IResult<I, O, E> 
@@ -76,15 +80,6 @@ fn identifier(i: &str) -> IResult<&str,String> {
     map(many_m_n(2,10000, lowercase), |v| v.iter().collect::<String>())(i)
 }
 
-fn let_expr(i: &str) -> IResult<&str,(String,Expr)> {
-    let (i,_) = space(tag("let"))(i)?;
-    let (i, ident) = delimited(multispace1, identifier, space(char('=')))(i)?;
-    map(expr, move |t| (ident.clone(),t))(i) 
-} 
-
-pub fn file(i: &str) -> IResult<&str,Vec<(String,Expr)>> {
-    many0(let_expr)(i) 
-}
 
 fn expr_no_app(i: &str) -> IResult<&str,Expr> {
     space(
@@ -116,3 +111,33 @@ pub fn expr(i: &str) -> IResult<&str,Expr> {
         ))
     )(i)
 }
+
+fn path(i: &str) -> IResult<&str, PathBuf> {
+    map(many0(verify(anychar, |c| !c.is_whitespace())),
+        |s| PathBuf::from(String::from_iter(s)))(i)
+
+}
+
+fn expr_stmt(i: &str) -> IResult<&str,Statement> {
+    map(expr, |e| Statement::Expr(e))(i)
+}
+
+fn import_stmt(i: &str) -> IResult<&str,Statement> {
+    let (i,_) = space(tag("import"))(i)?;
+    map(preceded(multispace1, path), |p| Statement::Import(p))(i)
+}
+
+fn let_stmt(i: &str) -> IResult<&str,Statement> {
+    let (i,_) = space(tag("let"))(i)?;
+    let (i, ident) = delimited(multispace1, identifier, space(char('=')))(i)?;
+    map(expr, move |t| Statement::Let(ident.clone(),t))(i) 
+} 
+
+fn stmt(i: &str) -> IResult<&str,Statement> {
+    alt((let_stmt,import_stmt,expr_stmt))(i)
+}
+
+pub fn file(i: &str) -> IResult<&str,Vec<Statement>> {
+    all_consuming(terminated(many0(stmt),multispace0))(i) 
+}
+
