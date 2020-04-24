@@ -1,0 +1,7 @@
+let true = \a.\b.a
+let false = \a.\b.b
+
+let and = \p.\q.p q false
+let or = \p.\q.p true q
+let not = \p.p false true
+

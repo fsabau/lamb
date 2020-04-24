@@ -20,7 +20,7 @@ pub enum Statement {
 
 
 impl Expr {
-    pub fn to_term<'a,'b>(self, env: &'a HashMap<String, Term>) -> Result<Term,LambError<'b>>  {
+    pub fn to_term(self, env: &HashMap<String, Term>) -> Result<Term,LambError>  {
           Ok(match self {
               Expr::Var(x) => Term::Var(x),
               Expr::Abs(x, e) => Term::Abs(x, Box::new(e.to_term(env)?)),

@@ -31,9 +31,9 @@ impl Evaluator {
         self.env.insert(name.to_owned(), term); 
     }
     
-    pub fn eval_file<'a>(&mut self, path: &Path) -> Result<(), LambError<'a>> {
-        let file = std::fs::read_to_string(path)?;
-        let (_, v) = parser::file(&file).unwrap();
+    pub fn eval_file(&mut self, path: &Path) -> Result<(), LambError> {
+        let contents = std::fs::read_to_string(path)?;
+        let (_, v) = parser::parse(parser::file, &contents)?;
         for stmt in v {
             match stmt {
                Statement::Import(path) => self.eval_file(&path)?,

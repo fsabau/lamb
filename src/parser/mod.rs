@@ -1,11 +1,16 @@
 pub mod ast;
 
-use ast::{Expr, Statement};
 use std::iter::FromIterator;
 use std::path::PathBuf;
+use crate::error::LambError;
+use ast::{Expr, Statement};
 use nom::{
     bytes::complete::tag, 
-    error::ParseError,
+    error::{
+        ParseError,
+        VerboseError,
+        convert_error,
+    },
     AsChar,
     InputTakeAtPosition,
     IResult,
@@ -35,7 +40,7 @@ use nom::{
     }
 };
 
-fn lowercase(i: &str) -> IResult<&str, char> {
+fn lowercase(i: &str) -> IResult<&str, char, VerboseError<&str>> {
     verify(anychar, |c| c.is_lowercase())(i)
 }
 
@@ -51,23 +56,23 @@ where I: InputTakeAtPosition,
     preceded(multispace0,f)
 }
 
-fn var(i: &str) -> IResult<&str, Expr> {
+fn var(i: &str) -> IResult<&str, Expr, VerboseError<&str>> {
     let (i, _) = not(peek(tag("let")))(i)?;
     map(space(lowercase), |c| Expr::Var(c))(i)
 }
 
-fn abs(i: &str) -> IResult<&str, Expr> {
+fn abs(i: &str) -> IResult<&str, Expr, VerboseError<&str>> {
     let (i,_) = char('\\')(i)?;
     let (i, c) = verify(space(anychar), |c| c.is_lowercase())(i)?;
     let (i,_) = char('.')(i)?;
     map(space(expr), move |t| Expr::Abs(c,Box::new(t)))(i)
 } 
 
-fn apps_vec(i: &str) -> IResult<&str, Vec<Expr>> {
+fn apps_vec(i: &str) -> IResult<&str, Vec<Expr>, VerboseError<&str>> {
     verify(separated_list(multispace1, expr_no_app), |v: &Vec<Expr>| v.len()>=2)(i)
 }
 
-fn app(i: &str) -> IResult<&str,Expr> {
+fn app(i: &str) -> IResult<&str,Expr, VerboseError<&str>> {
     map(apps_vec, 
         |v: Vec<Expr>| v.iter()
                   .skip(1)
@@ -75,13 +80,13 @@ fn app(i: &str) -> IResult<&str,Expr> {
     )(i)
 }
 
-fn identifier(i: &str) -> IResult<&str,String> {
+fn identifier(i: &str) -> IResult<&str,String, VerboseError<&str>> {
     let (i, _) = not(peek(tag("let")))(i)?;
     map(many_m_n(2,10000, lowercase), |v| v.iter().collect::<String>())(i)
 }
 
 
-fn expr_no_app(i: &str) -> IResult<&str,Expr> {
+fn expr_no_app(i: &str) -> IResult<&str,Expr, VerboseError<&str>> {
     space(
         alt((
             delimited(
@@ -96,7 +101,7 @@ fn expr_no_app(i: &str) -> IResult<&str,Expr> {
     )(i)
 }
 
-pub fn expr(i: &str) -> IResult<&str,Expr> {
+pub fn expr(i: &str) -> IResult<&str,Expr, VerboseError<&str>> {
     space(
         alt((
             app,
@@ -112,32 +117,49 @@ pub fn expr(i: &str) -> IResult<&str,Expr> {
     )(i)
 }
 
-fn path(i: &str) -> IResult<&str, PathBuf> {
+fn path(i: &str) -> IResult<&str, PathBuf, VerboseError<&str>> {
     map(many0(verify(anychar, |c| !c.is_whitespace())),
         |s| PathBuf::from(String::from_iter(s)))(i)
 
 }
 
-fn expr_stmt(i: &str) -> IResult<&str,Statement> {
+fn expr_stmt(i: &str) -> IResult<&str,Statement, VerboseError<&str>> {
     map(expr, |e| Statement::Expr(e))(i)
 }
 
-fn import_stmt(i: &str) -> IResult<&str,Statement> {
+fn import_stmt(i: &str) -> IResult<&str,Statement, VerboseError<&str>> {
     let (i,_) = space(tag("import"))(i)?;
-    map(preceded(multispace1, path), |p| Statement::Import(p))(i)
+    map(preceded(multispace1, path), |mut p| {
+        p.set_extension("lamb");
+        Statement::Import(p)
+    })(i)
 }
 
-fn let_stmt(i: &str) -> IResult<&str,Statement> {
+fn let_stmt(i: &str) -> IResult<&str,Statement, VerboseError<&str>> {
     let (i,_) = space(tag("let"))(i)?;
     let (i, ident) = delimited(multispace1, identifier, space(char('=')))(i)?;
     map(expr, move |t| Statement::Let(ident.clone(),t))(i) 
 } 
 
-fn stmt(i: &str) -> IResult<&str,Statement> {
+fn stmt(i: &str) -> IResult<&str,Statement, VerboseError<&str>> {
     alt((let_stmt,import_stmt,expr_stmt))(i)
 }
 
-pub fn file(i: &str) -> IResult<&str,Vec<Statement>> {
-    all_consuming(terminated(many0(stmt),multispace0))(i) 
+pub fn repl(i: &str) -> IResult<&str,Statement, VerboseError<&str>> {
+    all_consuming(terminated(stmt,multispace0))(i) 
 }
+
+pub fn file(i: &str) -> IResult<&str,Vec<Statement>, VerboseError<&str>> {
+    all_consuming(terminated(many0(alt((let_stmt,import_stmt))),multispace0))(i) 
+}
+
+pub fn parse<O>(parser: impl Fn(&str) -> IResult<&str, O, VerboseError<&str>>, input: &str) -> Result<(&str,O), LambError>{
+    match parser(input) {
+        Err(nom::Err::Error(e)) | Err(nom::Err::Failure(e)) => Err(LambError::Parse(convert_error(input,e))),
+        Ok(p) => Ok(p),
+        _ => panic!("Impossible"),
+    }
+}
+
+
 
