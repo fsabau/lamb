@@ -1,13 +1,25 @@
 name: lamb
-version: "0.1"
+version: "0.2"
 author: Sabau Florin-Vlad <sabauflorin28@gmail.com>
 about: Lambda Calculus evaluator
 args:
     - INPUT:
-        help: Sets the input file to use
-        required: true
+        help: Sets the input file to use. If no file is given, then start the REPL
+        required: false
         index: 1
-    - verboxe:
+    - strategy:
+        help: Sets the beta reduction strategy
+        short: s
+        long: strategy
+        takes_value: true
+        value_name: STRATEGY
+        possible_values: 
+            - normal
+            - applicative
+            - call_by_name
+            - call_by_value
+    - verbose:
         short: v
         long: verbose
         help: Sets the level of verbosity
+        multiple: true

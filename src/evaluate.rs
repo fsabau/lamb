@@ -17,8 +17,22 @@ pub enum Strategy {
     CallByValue,
 }
 
+impl std::str::FromStr for Strategy {
+    type Err = &'static str;
+    
+    fn from_str(s: &str) -> Result<Strategy,Self::Err> {
+        match s {
+            "normal" | "n" => Ok(Strategy::NormalOrder),
+            "applicative" | "a" => Ok(Strategy::ApplicativeOrder),
+            "call_by_name" | "cbn" => Ok(Strategy::CallByName),
+            "call_by_value" | "cbv" => Ok(Strategy::CallByValue),
+            _ => Err("No match for Strategy"),
+        }
+    }
+}
+
 pub struct Evaluator {
-    pub env: HashMap<String, Term>
+    pub env: HashMap<String, Term>,
 }
 
 
@@ -30,22 +44,36 @@ impl Evaluator {
     pub fn add(&mut self, name: & str, term: Term) {
         self.env.insert(name.to_owned(), term); 
     }
+
+
+    pub fn eval_repl(&mut self, line: &str, strategy: Strategy) -> Result<(),LambError> {
+        let (_, stmt) = parser::parse(parser::repl, line)?;
+        match stmt {
+            Statement::Import(path) => self.eval_file(&path)?,
+            Statement::Let(name, expr) => self.add(&name, expr.to_term(&self.env)?),
+            Statement::Expr(e) => println!("{}", e.to_term(&self.env)?.reduce(strategy))
+        }
+        Ok(())
+    }
     
     pub fn eval_file(&mut self, path: &Path) -> Result<(), LambError> {
-        let contents = std::fs::read_to_string(path)?;
+        let contents: String = crate::read_file(path)?;
         let (_, v) = parser::parse(parser::file, &contents)?;
         for stmt in v {
             match stmt {
                Statement::Import(path) => self.eval_file(&path)?,
-               Statement::Let(name,expr) => self.add(&name,expr.to_term(&self.env)?),
+               Statement::Let(name,expr) => self.add(&name, expr.to_term(&self.env)?),
                Statement::Expr(_) => (),
             }
         }
         Ok(())
     }
-    pub fn reduce(&self, name: &str, strategy: Strategy) -> Option<Term> {
-        let t = self.env.get(name)?.clone();
-        let dbt = t.to_de_bruijn().reduce(strategy);
-        Some(dbt.to_term())
+    
+    pub fn get(&self, name: &str) -> Result<Term, LambError> {
+        match self.env.get(name) {
+            Some(t) => Ok(t.clone()),
+            None => Err(LambError::NotDefined(name.to_owned())) 
+        }
     }
+
 }

@@ -1,6 +1,7 @@
+import test2
+
 let true = \x.\y.x
 let false = \x.\y.y
-
 let and = \p.\q.p q p
 let or = \p.\q.p p q
 let not = \b.b false true
@@ -32,4 +33,4 @@ let four = \f.\x.f (f (f (f x)))
 let five = \f.\x.f (f (f (f (f x))))
  
 
-let main =  mult  five   four
+let main =  testing y

@@ -1,5 +1,6 @@
 use std::fmt;
 use std::collections::HashMap;
+use crate::evaluate::Strategy;
 use crate::debruijn::DBTerm;
 
 #[derive(Debug,Clone)]
@@ -51,6 +52,10 @@ impl Term {
                                             Box::new(t2._to_de_bruijn(map,c)))
             
         }
+    }
+
+    pub fn reduce(self, strategy: Strategy) -> Term {
+        self.to_de_bruijn().reduce(strategy).to_term()
     }
 
 }

@@ -1,16 +1,10 @@
-use std::convert::From;
+use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum LambError{
     Parse(String),
-    IO(std::io::Error),
+    FileNotFound(PathBuf),
     NotDefined(String),
-}
-
-impl From<std::io::Error> for LambError {
-    fn from(error: std::io::Error) -> LambError {
-        LambError::IO(error)
-    }
 }
 
 
@@ -19,7 +13,7 @@ impl std::fmt::Display for LambError {
         match self {
             LambError::Parse(message) => write!(f, "Parsing error:\n{}", message),
             LambError::NotDefined(n) => write!(f, "{} not defined", n),
-            LambError::IO(e) => write!(f,"{}",e)
+            LambError::FileNotFound(p) => write!(f,"File not found: {}", p.to_str().unwrap())
         }
     }
 }
