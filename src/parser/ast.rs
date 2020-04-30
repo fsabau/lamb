@@ -7,6 +7,7 @@ use crate::error::LambError;
 pub enum Expr {
     Var(char),
     Ident(String),
+    Num(u64),
     Abs(char, Box<Expr>),
     App(Box<Expr>,Box<Expr>),
 }
@@ -25,6 +26,7 @@ impl Expr {
               Expr::Var(x) => Term::Var(x),
               Expr::Abs(x, e) => Term::Abs(x, Box::new(e.to_term(env)?)),
               Expr::App(e1,e2) => Term::App(Box::new(e1.to_term(env)?), Box::new(e2.to_term(env)?)),
+              Expr::Num(x) => Term::from_nr(x),
               Expr::Ident(name) => match (*env).get(&name) {
                   None => return Err(LambError::NotDefined(name)),
                   Some(t) => (t).clone(),

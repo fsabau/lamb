@@ -2,6 +2,7 @@ pub mod ast;
 
 use std::iter::FromIterator;
 use std::path::PathBuf;
+use std::str::FromStr;
 use crate::error::LambError;
 use ast::{Expr, Statement};
 use nom::{
@@ -20,12 +21,15 @@ use nom::{
         terminated,
     },
     character::complete::{
+        alphanumeric1,
         anychar,
         char,
         multispace0,
         multispace1,
+        digit1,
     }, 
     combinator::{
+        map_res,
         all_consuming,
         not,
         peek,
@@ -35,7 +39,6 @@ use nom::{
     branch::alt,
     multi::{
         many0,
-        many_m_n,
         separated_list,
     }
 };
@@ -80,9 +83,21 @@ fn app(i: &str) -> IResult<&str,Expr, VerboseError<&str>> {
     )(i)
 }
 
+fn verify_name(name: &str) -> bool {
+    if name == "let" {
+        return false
+    }
+
+    (name.starts_with(char::is_lowercase) && name.len() >1 ) || name.starts_with(char::is_uppercase)
+}
+
 fn identifier(i: &str) -> IResult<&str,String, VerboseError<&str>> {
     let (i, _) = not(peek(tag("let")))(i)?;
-    map(many_m_n(2,10000, lowercase), |v| v.iter().collect::<String>())(i)
+    map(verify(alphanumeric1, verify_name), |s: &str| s.to_owned())(i)
+}
+
+fn number(i: &str) -> IResult<&str, u64, VerboseError<&str>> {
+    map_res(digit1, u64::from_str)(i)
 }
 
 
@@ -95,6 +110,7 @@ fn expr_no_app(i: &str) -> IResult<&str,Expr, VerboseError<&str>> {
                 space(char(')'))
                 ),
             abs, 
+            map(number, Expr::Num),
             map(identifier, |s| Expr::Ident(s)),
             var
         ))
@@ -111,7 +127,8 @@ pub fn expr(i: &str) -> IResult<&str,Expr, VerboseError<&str>> {
                 char(')')
                 ),
             abs,
-            map(identifier, |s| Expr::Ident(s)),
+            map(number, Expr::Num),
+            map(identifier, Expr::Ident),
             var
         ))
     )(i)

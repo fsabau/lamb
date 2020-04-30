@@ -3,7 +3,6 @@ use std::path::Path;
 use std::io::{BufRead, Write};
 use lamb::error::LambError;
 use lamb::evaluate::{Evaluator, Strategy};
-use lamb::term::Term;
 use clap::value_t;
 use clap::App;
 
@@ -14,7 +13,7 @@ struct Opts {
 }
 
 
-fn repl(options: &mut Opts) -> Result<(),LambError> {
+fn repl(options: &mut Opts) {
     let mut evaluator = Evaluator::new();
     loop {
         print!("λ: ");
@@ -23,10 +22,12 @@ fn repl(options: &mut Opts) -> Result<(),LambError> {
         std::io::stdin().lock().read_line(&mut line).unwrap();
         match line.trim_end() {
             "exit" | "quit" => { break; },
-            s =>  evaluator.eval_repl(s,options.strategy)?,
+            s =>  match evaluator.eval_repl(s,options.strategy) {
+                Ok(_) => (),
+                Err(e) => println!("{}", e),
+            }
         }
     }
-    Ok(())
 }
 
 
@@ -47,7 +48,7 @@ fn handle_opts(matches: clap::ArgMatches) -> Result<(),LambError> {
     
     match input {
         Some(p) => file(Path::new(p), &opts),
-        None => repl(&mut opts),
+        None => Ok(repl(&mut opts)),
      }
 }
 

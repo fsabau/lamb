@@ -24,6 +24,23 @@ impl fmt::Display for Term {
 
 impl Term {
 
+    pub fn from_nr(nr: u64) -> Term {
+        Term::Abs('f', 
+                  Box::new( Term::Abs('x', 
+                                      Box::new(Self::_from_nr(nr))
+                                      ))
+                  )       
+    }
+
+    fn _from_nr(nr: u64) -> Term {
+        if nr == 0 {
+            Term::Var('x')
+        } else {
+            Term::App(Box::new(Term::Var('f')),
+                      Box::new(Self::_from_nr(nr-1)))
+        }
+    }
+
     pub fn to_de_bruijn(self) -> DBTerm {
         let mut map = HashMap::new();
         self._to_de_bruijn(&mut map,0)
